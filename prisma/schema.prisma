@@ -1,0 +1,961 @@
+// ==============================================================================
+// CollegeQuery SaaS — Multi-Tenant PostgreSQL Schema (Prisma ORM)
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------------------
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  PROVISIONING
+  DEACTIVATED
+}
+
+enum UserType {
+  SAAS_SUPER_ADMIN
+  COLLEGE_ADMIN
+  PRINCIPAL
+  HOD
+  FACULTY
+  STUDENT
+  RECEPTION_STAFF
+  ACCOUNTS_STAFF
+  EXAMINATION_STAFF
+  SUPPORT_STAFF
+}
+
+enum StaffCategory {
+  RECEPTION
+  ACCOUNTS
+  EXAMINATION
+  SUPPORT
+  ADMINISTRATIVE
+}
+
+enum QueryPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum QueryStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_FOR_STUDENT
+  WAITING_FOR_STAFF
+  ESCALATED
+  RESOLVED
+  CLOSED
+  REOPENED
+  CANCELLED
+}
+
+enum AssignmentType {
+  AUTO
+  MANUAL
+  ESCALATION
+  TRANSFERRED
+}
+
+enum EscalationTrigger {
+  SLA_BREACH
+  MANUAL_HOD
+  MANUAL_STAFF
+  UNANSWERED_THRESHOLD
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+}
+
+enum StorageProvider {
+  S3
+  MINIO
+  LOCAL
+}
+
+enum FaqVisibility {
+  PUBLIC
+  STUDENTS_ONLY
+  STAFF_ONLY
+}
+
+enum FaqStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ------------------------------------------------------------------------------
+// 1. TENANTS & CONFIGURATION
+// ------------------------------------------------------------------------------
+
+model Tenant {
+  id             String       @id @default(uuid()) @db.Uuid
+  slug           String       @unique @db.VarChar(63) // Subdomain slug, e.g. "acme"
+  name           String       @db.VarChar(255)
+  customDomain   String?      @unique @map("custom_domain") @db.VarChar(255)
+  status         TenantStatus @default(ACTIVE)
+  subscriptionId String?      @map("subscription_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  config           TenantConfig?
+  users            User[]
+  colleges         College[]
+  roles            Role[]
+  departments      Department[]
+  courses          Course[]
+  academicSessions AcademicSession[]
+  students         Student[]
+  faculty          Faculty[]
+  employees        Employee[]
+  queryCategories  QueryCategory[]
+  queries          Query[]
+  queryAssignments QueryAssignment[]
+  queryStatusLogs  QueryStatusHistory[]
+  queryEscalations QueryEscalation[]
+  queryFeedbacks   QueryFeedback[]
+  attachments      Attachment[]
+  slaPolicies      SLAPolicy[]
+  faqs             Faq[]
+  knowledgeArticles KnowledgeArticle[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  payments         Payment[]
+  auditLogs               AuditLog[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  outboxEvents            OutboxEvent[]
+
+  @@index([status])
+  @@map("tenants")
+}
+
+model TenantConfig {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @unique @map("tenant_id") @db.Uuid
+  logoUrl          String?  @map("logo_url") @db.VarChar(512)
+  faviconUrl       String?  @map("favicon_url") @db.VarChar(512)
+  primaryColor     String   @default("#0284c7") @map("primary_color") @db.VarChar(16)
+  accentColor      String   @default("#38bdf8") @map("accent_color") @db.VarChar(16)
+  supportEmail     String?  @map("support_email") @db.VarChar(255)
+  supportPhone     String?  @map("support_phone") @db.VarChar(32)
+  timezone         String   @default("UTC") @db.VarChar(64)
+  dateFormat       String   @default("YYYY-MM-DD") @map("date_format") @db.VarChar(32)
+  enableAutoAssign Boolean  @default(true) @map("enable_auto_assign")
+  workingDays      Int[]    @default([1, 2, 3, 4, 5]) @map("working_days") // 1=Mon, 7=Sun
+  workHoursStart   String   @default("09:00") @map("work_hours_start") @db.VarChar(8)
+  workHoursEnd     String   @default("17:00") @map("work_hours_end") @db.VarChar(8)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_configs")
+}
+
+// ------------------------------------------------------------------------------
+// 2. USERS, ROLES & PERMISSIONS (RBAC)
+// ------------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String?   @map("tenant_id") @db.Uuid // Nullable ONLY for SaaS Super Admin
+  email        String    @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  firstName    String    @map("first_name") @db.VarChar(128)
+  lastName     String    @map("last_name") @db.VarChar(128)
+  phoneNumber  String?   @map("phone_number") @db.VarChar(32)
+  avatarUrl    String?   @map("avatar_url") @db.VarChar(512)
+  userType     UserType  @map("user_type")
+  isActive     Boolean   @default(true) @map("is_active")
+  isSuperAdmin Boolean   @default(false) @map("is_super_admin")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenant              Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles           UserRole[]
+  refreshTokens       RefreshToken[]
+  studentProfile      Student?
+  facultyProfile      Faculty?
+  employeeProfile     Employee?
+  assignedQueries     QueryAssignment[]    @relation("AssignedToUser")
+  assignedByQueries   QueryAssignment[]    @relation("AssignedByUser")
+  statusChangedLogs   QueryStatusHistory[] @relation("StatusChangedByUser")
+  escalatedToQueries  QueryEscalation[]    @relation("EscalatedToUser")
+  uploadedAttachments Attachment[]         @relation("UploadedByUser")
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  headedDepartments      Department[]         @relation("DepartmentHOD")
+
+  @@unique([tenantId, email])
+  @@index([tenantId, userType])
+  @@index([tenantId, isActive])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  familyId  String   @map("family_id") @db.Uuid // Used for rotating token reuse detection
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRevoked])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model Role {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid // Null for system template roles
+  name         String   @db.VarChar(128)
+  code         String   @db.VarChar(64) // e.g. "COLLEGE_ADMIN", "FACULTY"
+  description  String?  @db.VarChar(255)
+  isSystemRole Boolean  @default(false) @map("is_system_role")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, code])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(128) // e.g. "query:assign", "query:reply:internal"
+  module      String   @db.VarChar(64)          // e.g. "QUERIES", "ACADEMIC", "SETTINGS"
+  action      String   @db.VarChar(64)          // e.g. "CREATE", "VIEW", "ASSIGN"
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ------------------------------------------------------------------------------
+// 3. COLLEGE HIERARCHY & ACADEMIC STRUCTURES
+// ------------------------------------------------------------------------------
+
+model College {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String   @db.VarChar(64) // e.g. "ENG-CAMPUS-01"
+  name        String   @db.VarChar(255)
+  address     String?  @db.Text
+  city        String?  @db.VarChar(128)
+  state       String?  @db.VarChar(128)
+  country     String?  @default("India") @db.VarChar(128)
+  postalCode  String?  @map("postal_code") @db.VarChar(32)
+  phoneNumber String?  @map("phone_number") @db.VarChar(32)
+  email       String?  @db.VarChar(255)
+  website     String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campuses    CampusUnit[]
+  departments Department[]
+
+  @@unique([tenantId, code])
+  @@map("colleges")
+}
+
+model CampusUnit {
+  id        String   @id @default(uuid()) @db.Uuid
+  collegeId String   @map("college_id") @db.Uuid
+  name      String   @db.VarChar(128)
+  location  String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  college College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@map("campus_units")
+}
+
+model Department {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  collegeId   String   @map("college_id") @db.Uuid
+  code        String   @db.VarChar(64) // e.g. "CSE", "ECE", "MECH"
+  name        String   @db.VarChar(128)
+  description String?  @db.Text
+  hodUserId   String?  @map("hod_user_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  college         College         @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  hodUser         User?           @relation("DepartmentHOD", fields: [hodUserId], references: [id], onDelete: SetNull)
+  courses         Course[]
+  faculty         Faculty[]
+  employees       Employee[]
+  students        Student[]
+  queryCategories QueryCategory[]
+  queries         Query[]
+
+  @@unique([tenantId, collegeId, code])
+  @@map("departments")
+}
+
+model Course {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  departmentId       String   @map("department_id") @db.Uuid
+  code               String   @db.VarChar(64) // e.g. "BTECH-CSE"
+  name               String   @db.VarChar(128)
+  durationSemesters  Int      @default(8) @map("duration_semesters")
+  degreeLevel        String   @default("Undergraduate") @map("degree_level") @db.VarChar(64)
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  students   Student[]
+
+  @@unique([tenantId, departmentId, code])
+  @@map("courses")
+}
+
+model AcademicSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(64) // e.g. "2026-2027"
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  isActive  Boolean  @default(false) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  @@unique([tenantId, name])
+  @@map("academic_sessions")
+}
+
+// ------------------------------------------------------------------------------
+// 4. STUDENT, FACULTY & EMPLOYEE PROFILES
+// ------------------------------------------------------------------------------
+
+model Student {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  departmentId      String   @map("department_id") @db.Uuid
+  courseId          String   @map("course_id") @db.Uuid
+  academicSessionId String   @map("academic_session_id") @db.Uuid
+  enrollmentNumber  String   @map("enrollment_number") @db.VarChar(64)
+  rollNumber        String   @map("roll_number") @db.VarChar(64)
+  currentSemester   Int      @default(1) @map("current_semester")
+  admissionYear     Int      @map("admission_year")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department      Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  academicSession AcademicSession @relation(fields: [academicSessionId], references: [id], onDelete: Cascade)
+  queries         Query[]
+
+  @@unique([tenantId, enrollmentNumber])
+  @@unique([tenantId, rollNumber])
+  @@index([tenantId, departmentId, courseId])
+  @@map("students")
+}
+
+model Faculty {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  departmentId     String   @map("department_id") @db.Uuid
+  employeeCode     String   @map("employee_code") @db.VarChar(64)
+  designation      String   @db.VarChar(128) // e.g. "Assistant Professor"
+  specialization   String?  @db.VarChar(255)
+  maxActiveQueries Int      @default(15) @map("max_active_queries")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department       Department        @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  queryAssignments QueryAssignment[]
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId, departmentId])
+  @@map("faculty")
+}
+
+model Employee {
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  userId        String        @unique @map("user_id") @db.Uuid
+  departmentId  String?       @map("department_id") @db.Uuid
+  employeeCode  String        @map("employee_code") @db.VarChar(64)
+  staffCategory StaffCategory @map("staff_category")
+  designation   String        @db.VarChar(128)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId, staffCategory])
+  @@map("employees")
+}
+
+// ------------------------------------------------------------------------------
+// 5. QUERY TICKETS & MANAGEMENT ENGINE
+// ------------------------------------------------------------------------------
+
+model QueryCategory {
+  id                 String        @id @default(uuid()) @db.Uuid
+  tenantId           String        @map("tenant_id") @db.Uuid
+  departmentId       String?       @map("department_id") @db.Uuid // Nullable for general/cross-department categories
+  name               String        @db.VarChar(128)
+  slug               String        @db.VarChar(64)
+  description        String?       @db.Text
+  defaultPriority    QueryPriority @default(MEDIUM) @map("default_priority")
+  defaultSlaHours    Int           @default(48) @map("default_sla_hours")
+  isActive           Boolean       @default(true) @map("is_active")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  queries    Query[]
+  faqs       Faq[]
+  knowledgeArticles KnowledgeArticle[]
+
+  @@unique([tenantId, slug])
+  @@map("query_categories")
+}
+
+model Query {
+  id                String        @id @default(uuid()) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  ticketNumber      String        @unique @map("ticket_number") @db.VarChar(32) // e.g. "CQ-2026-00042"
+  studentId         String        @map("student_id") @db.Uuid
+  departmentId      String        @map("department_id") @db.Uuid
+  categoryId        String        @map("category_id") @db.Uuid
+  title             String        @db.VarChar(255)
+  description       String        @db.Text
+  priority          QueryPriority @default(MEDIUM)
+  status            QueryStatus   @default(OPEN)
+  conversationRefId String?       @map("conversation_ref_id") @db.VarChar(64) // MongoDB _id
+  slaDeadline       DateTime?     @map("sla_deadline")
+  firstRespondedAt  DateTime?     @map("first_responded_at")
+  resolvedAt        DateTime?     @map("resolved_at")
+  closedAt          DateTime?     @map("closed_at")
+  isEscalated       Boolean       @default(false) @map("is_escalated")
+  escalationLevel   Int           @default(0) @map("escalation_level")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student       Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  department    Department           @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  category      QueryCategory        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  assignments   QueryAssignment[]
+  statusHistory QueryStatusHistory[]
+  escalations   QueryEscalation[]
+  attachments   Attachment[]
+  feedback      QueryFeedback?
+
+  @@index([tenantId, status])
+  @@index([tenantId, studentId])
+  @@index([tenantId, departmentId])
+  @@index([tenantId, priority])
+  @@index([tenantId, slaDeadline])
+  @@map("queries")
+}
+
+model QueryAssignment {
+  id               String         @id @default(uuid()) @db.Uuid
+  tenantId         String         @map("tenant_id") @db.Uuid
+  queryId          String         @map("query_id") @db.Uuid
+  assignedToUserId String         @map("assigned_to_user_id") @db.Uuid
+  assignedByUserId String?        @map("assigned_by_user_id") @db.Uuid // Null on auto-assignment
+  facultyProfileId String?        @map("faculty_profile_id") @db.Uuid
+  assignmentType   AssignmentType @default(AUTO) @map("assignment_type")
+  reason           String?        @db.VarChar(255)
+  assignedAt       DateTime       @default(now()) @map("assigned_at")
+  unassignedAt     DateTime?      @map("unassigned_at")
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  query          Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  assignedToUser User     @relation("AssignedToUser", fields: [assignedToUserId], references: [id], onDelete: Cascade)
+  assignedByUser User?    @relation("AssignedByUser", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  facultyProfile Faculty? @relation(fields: [facultyProfileId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, queryId])
+  @@index([tenantId, assignedToUserId])
+  @@map("query_assignments")
+}
+
+model QueryStatusHistory {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  queryId         String      @map("query_id") @db.Uuid
+  previousStatus  QueryStatus @map("previous_status")
+  newStatus       QueryStatus @map("new_status")
+  changedByUserId String?     @map("changed_by_user_id") @db.Uuid
+  remarks         String?     @db.Text
+  changedAt       DateTime    @default(now()) @map("changed_at")
+
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  query         Query  @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  changedByUser User?  @relation("StatusChangedByUser", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, queryId])
+  @@map("query_status_history")
+}
+
+model QueryEscalation {
+  id                 String            @id @default(uuid()) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  queryId            String            @map("query_id") @db.Uuid
+  fromLevel          Int               @map("from_level")
+  toLevel            Int               @map("to_level")
+  triggerReason      EscalationTrigger @map("trigger_reason")
+  escalatedToUserId  String            @map("escalated_to_user_id") @db.Uuid
+  escalationNotes    String?           @map("escalation_notes") @db.Text
+  isResolvedAtLevel  Boolean           @default(false) @map("is_resolved_at_level")
+  escalatedAt        DateTime          @default(now()) @map("escalated_at")
+
+  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  query           Query  @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  escalatedToUser User   @relation("EscalatedToUser", fields: [escalatedToUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, queryId])
+  @@map("query_escalations")
+}
+
+model QueryFeedback {
+  id                    String   @id @default(uuid()) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  queryId               String   @unique @map("query_id") @db.Uuid
+  studentId             String?  @map("student_id") @db.Uuid
+  rating                Int      @db.SmallInt // 1 to 5 Stars (overall)
+  resolutionRating      Int?     @map("resolution_rating") @db.SmallInt // 1 to 5 Stars
+  responseQualityRating Int?     @map("response_quality_rating") @db.SmallInt // 1 to 5 Stars
+  wasIssueResolved      Boolean  @default(true) @map("was_issue_resolved")
+  feedbackText          String?  @map("feedback_text") @db.Text
+  submittedAt           DateTime @default(now()) @map("submitted_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  query  Query  @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, submittedAt])
+  @@map("query_feedback")
+}
+
+model Attachment {
+  id                 String          @id @default(uuid()) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  queryId            String?         @map("query_id") @db.Uuid
+  fileName           String          @map("file_name") @db.VarChar(255)
+  fileKey            String          @map("file_key") @db.VarChar(512)
+  fileType           String          @map("file_type") @db.VarChar(128) // MIME type
+  fileSizeBytes      Int             @map("file_size_bytes")
+  storageProvider    StorageProvider @default(S3) @map("storage_provider")
+  uploadedByUserId   String          @map("uploaded_by_user_id") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  query          Query? @relation(fields: [queryId], references: [id], onDelete: SetNull)
+  uploadedByUser User   @relation("UploadedByUser", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, queryId])
+  @@map("attachments")
+}
+
+// ------------------------------------------------------------------------------
+// 6. SLA POLICIES & MONITORING
+// ------------------------------------------------------------------------------
+
+model SLAPolicy {
+  id                 String        @id @default(uuid()) @db.Uuid
+  tenantId           String        @map("tenant_id") @db.Uuid
+  name               String        @db.VarChar(128)
+  priority           QueryPriority
+  firstResponseHours Int           @map("first_response_hours")
+  resolutionHours    Int           @map("resolution_hours")
+  escalateOnBreach   Boolean       @default(true) @map("escalate_on_breach")
+  isActive           Boolean       @default(true) @map("is_active")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, priority])
+  @@map("sla_policies")
+}
+
+// ------------------------------------------------------------------------------
+// 7. SUBSCRIPTIONS, PLANS & BILLING
+// ------------------------------------------------------------------------------
+
+model Plan {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @unique @db.VarChar(64) // e.g. "Free", "Starter", "Professional", "Enterprise"
+  tier              String   @unique @db.VarChar(32) // "FREE", "STARTER", "PROFESSIONAL", "ENTERPRISE"
+  priceMonthly      Decimal  @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly       Decimal  @map("price_yearly") @db.Decimal(10, 2)
+  studentLimit      Int      @map("student_limit")
+  facultyLimit      Int      @map("faculty_limit")
+  staffLimit        Int      @default(10) @map("staff_limit")
+  queryLimitMonthly Int      @default(500) @map("query_limit_monthly")
+  storageLimitMb    Int      @default(1024) @map("storage_limit_mb")
+  trialDays         Int      @default(14) @map("trial_days")
+  gracePeriodDays   Int      @default(7) @map("grace_period_days")
+  featuresJson      Json     @map("features_json")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  tenantId           String             @map("tenant_id") @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  pendingPlanId      String?            @map("pending_plan_id") @db.Uuid
+  status             SubscriptionStatus @default(ACTIVE)
+  billingCycle       BillingCycle       @default(MONTHLY) @map("billing_cycle")
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  trialEndsAt        DateTime?          @map("trial_ends_at")
+  gracePeriodEndsAt  DateTime?          @map("grace_period_ends_at")
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
+  canceledAt         DateTime?          @map("canceled_at")
+  suspendedAt        DateTime?          @map("suspended_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices Invoice[]
+
+  @@index([tenantId, status])
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  subscriptionId String        @map("subscription_id") @db.Uuid
+  targetPlanId   String?       @map("target_plan_id") @db.Uuid
+  billingCycle   BillingCycle  @default(MONTHLY) @map("billing_cycle")
+  invoiceNumber  String        @unique @map("invoice_number") @db.VarChar(64)
+  description    String?       @db.VarChar(255)
+  amount         Decimal       @db.Decimal(10, 2)
+  currency       String        @default("INR") @db.VarChar(8)
+  status         InvoiceStatus @default(OPEN)
+  dueDate        DateTime      @map("due_date")
+  paidAt         DateTime?     @map("paid_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+
+  @@index([tenantId, status])
+  @@map("invoices")
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  invoiceId       String        @map("invoice_id") @db.Uuid
+  paymentGateway  String        @map("payment_gateway") @db.VarChar(64) // "SANDBOX", "RAZORPAY", "STRIPE"
+  gatewayTxId     String        @unique @map("gateway_tx_id") @db.VarChar(128)
+  idempotencyKey  String?       @unique @map("idempotency_key") @db.VarChar(128)
+  providerEventId String?       @unique @map("provider_event_id") @db.VarChar(128)
+  amount          Decimal       @db.Decimal(10, 2)
+  refundedAmount  Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  status          PaymentStatus @default(PENDING)
+  failureReason   String?       @map("failure_reason") @db.VarChar(255)
+  metadata        Json?
+  paidAt          DateTime?     @map("paid_at")
+  refundedAt      DateTime?     @map("refunded_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@map("payments")
+}
+
+model PaymentWebhookEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  provider        String   @db.VarChar(64)
+  providerEventId String   @unique @map("provider_event_id") @db.VarChar(128)
+  eventType       String   @map("event_type") @db.VarChar(128)
+  payload         Json
+  processedAt     DateTime @default(now()) @map("processed_at")
+
+  @@map("payment_webhook_events")
+}
+
+// ------------------------------------------------------------------------------
+// 8. AUDIT LOGS, NOTIFICATIONS & TRANSACTIONAL OUTBOX
+// ------------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String?  @map("tenant_id") @db.Uuid // Null for platform-wide actions
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(64)  // e.g. "USER_LOGIN", "QUERY_ESCALATED"
+  entityName String   @map("entity_name") @db.VarChar(64)
+  entityId   String   @map("entity_id") @db.VarChar(64)
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([entityName, entityId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String   @db.VarChar(255)
+  body      String   @db.Text
+  linkUrl   String?  @map("link_url") @db.VarChar(512)
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, isRead])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userId        String   @unique @map("user_id") @db.Uuid
+  inAppEnabled  Boolean  @default(true) @map("in_app_enabled")
+  emailEnabled  Boolean  @default(true) @map("email_enabled")
+  queryUpdates  Boolean  @default(true) @map("query_updates")
+  newMessages   Boolean  @default(true) @map("new_messages")
+  slaAlerts     Boolean  @default(true) @map("sla_alerts")
+  billingAlerts Boolean  @default(true) @map("billing_alerts")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@map("notification_preferences")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String?   @map("tenant_id") @db.Uuid
+  eventType   String    @map("event_type") @db.VarChar(128)
+  aggregateId String    @map("aggregate_id") @db.VarChar(64)
+  payload     Json
+  isProcessed Boolean   @default(false) @map("is_processed")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([isProcessed, createdAt])
+  @@map("outbox_events")
+}
+
+// ------------------------------------------------------------------------------
+// 9. FAQS & KNOWLEDGE BASE
+// ------------------------------------------------------------------------------
+
+model Faq {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  categoryId      String?       @map("category_id") @db.Uuid
+  question        String        @db.VarChar(500)
+  answer          String        @db.Text
+  tags            String[]      @default([])
+  visibility      FaqVisibility @default(PUBLIC)
+  status          FaqStatus     @default(DRAFT)
+  sortOrder       Int           @default(0) @map("sort_order")
+  viewCount       Int           @default(0) @map("view_count")
+  helpfulCount    Int           @default(0) @map("helpful_count")
+  createdByUserId String?       @map("created_by_user_id") @db.Uuid
+  publishedAt     DateTime?     @map("published_at")
+  archivedAt      DateTime?     @map("archived_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category          QueryCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  knowledgeArticles KnowledgeArticle[]
+
+  @@index([tenantId, status, visibility])
+  @@index([tenantId, categoryId])
+  @@map("faqs")
+}
+
+model KnowledgeArticle {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  categoryId      String?       @map("category_id") @db.Uuid
+  relatedFaqId    String?       @map("related_faq_id") @db.Uuid
+  slug            String        @db.VarChar(160)
+  title           String        @db.VarChar(255)
+  summary         String?       @db.Text
+  content         String        @db.Text
+  tags            String[]      @default([])
+  status          ArticleStatus @default(DRAFT)
+  version         Int           @default(1)
+  viewCount       Int           @default(0) @map("view_count")
+  helpfulCount    Int           @default(0) @map("helpful_count")
+  notHelpfulCount Int           @default(0) @map("not_helpful_count")
+  authorUserId    String?       @map("author_user_id") @db.Uuid
+  publishedAt     DateTime?     @map("published_at")
+  archivedAt      DateTime?     @map("archived_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  tenant     Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category   QueryCategory?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  relatedFaq Faq?                        @relation(fields: [relatedFaqId], references: [id], onDelete: SetNull)
+  versions   KnowledgeArticleVersion[]
+  feedbacks  KnowledgeArticleFeedback[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([tenantId, categoryId])
+  @@map("knowledge_articles")
+}
+
+model KnowledgeArticleVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  articleId      String   @map("article_id") @db.Uuid
+  version        Int
+  title          String   @db.VarChar(255)
+  summary        String?  @db.Text
+  content        String   @db.Text
+  tags           String[] @default([])
+  changeNote     String?  @map("change_note") @db.VarChar(255)
+  editedByUserId String?  @map("edited_by_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, version])
+  @@index([tenantId, articleId])
+  @@map("knowledge_article_versions")
+}
+
+model KnowledgeArticleFeedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  articleId String   @map("article_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  isHelpful Boolean  @map("is_helpful")
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, userId])
+  @@index([tenantId, articleId])
+  @@map("knowledge_article_feedback")
+}
