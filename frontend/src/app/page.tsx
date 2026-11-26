@@ -25,6 +25,11 @@ import { AuditLogsView } from '@/components/views/AuditLogsView';
 import { CollegesDirectoryView } from '@/components/views/CollegesDirectoryView';
 import { TenantConfigView } from '@/components/views/TenantConfigView';
 import { ImpersonationView } from '@/components/views/ImpersonationView';
+import { UsersView } from '@/components/views/UsersView';
+import { ConversationsView } from '@/components/views/ConversationsView';
+import { NotificationsView } from '@/components/views/NotificationsView';
+import { PaymentsView } from '@/components/views/PaymentsView';
+import { AttachmentsView } from '@/components/views/AttachmentsView';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { EmptyState } from '@/components/ui/EmptyState';
 
@@ -90,6 +95,16 @@ function Portal() {
     content = <TenantConfigView />;
   } else if (activeView === 'impersonation') {
     content = <ImpersonationView />;
+  } else if (activeView === 'users') {
+    content = <UsersView />;
+  } else if (activeView === 'conversations' || activeView === 'messaging') {
+    content = <ConversationsView />;
+  } else if (activeView === 'notifications') {
+    content = <NotificationsView />;
+  } else if (activeView === 'payments') {
+    content = <PaymentsView />;
+  } else if (activeView === 'attachments') {
+    content = <AttachmentsView />;
   } else {
     content = (
       <EmptyState

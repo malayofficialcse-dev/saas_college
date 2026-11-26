@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   HelpCircle,
   Search,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { FaqItem } from '@/lib/types';
 import { MOCK_FAQS } from '@/lib/mock-data';
+import { kbApi } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -28,6 +29,12 @@ export const FaqsView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [expandedId, setExpandedId] = useState<string | null>(faqs[0]?.id || null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    kbApi.getFaqs().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setFaqs(data);
+    });
+  }, []);
 
   const [form, setForm] = useState({
     question: '',
@@ -52,6 +59,7 @@ export const FaqsView: React.FC = () => {
     setFaqs((prev) => [newFaq, ...prev]);
     setIsAddModalOpen(false);
     setForm({ question: '', answer: '', category: 'Fees & Accounts' });
+    kbApi.createFaq({ question: form.question, answer: form.answer, category: form.category }).catch(() => { });
   };
 
   const handleUpvote = (id: string, e: React.MouseEvent) => {
@@ -129,11 +137,10 @@ export const FaqsView: React.FC = () => {
             key={cat}
             onClick={() => setSelectedCategory(cat)}
             style={{ borderRadius: '4px' }}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
-              selectedCategory === cat
+            className={`px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${selectedCategory === cat
                 ? 'bg-[#4779B8] text-white'
                 : 'bg-white border border-[#D0D5DD] text-[#344054] hover:bg-[#F9FAFB]'
-            }`}
+              }`}
           >
             {cat === 'ALL' ? 'All Categories' : cat}
           </button>

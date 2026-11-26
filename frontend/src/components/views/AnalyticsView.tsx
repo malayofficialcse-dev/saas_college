@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -15,9 +15,15 @@ import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
 import { MOCK_DEPARTMENTS, MOCK_TICKETS } from '@/lib/mock-data';
+import { analyticsApi } from '@/lib/api';
 
 export const AnalyticsView: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | 'term'>('30d');
+
+  useEffect(() => {
+    analyticsApi.getOverview().catch(() => { });
+    analyticsApi.getQueryVolume().catch(() => { });
+  }, [timeframe]);
 
   const deptMetrics = [
     { name: 'Computer Science & Eng (CSE)', total: 540, resolved: 528, sla: 98.2, avgHours: 3.4 },
@@ -43,25 +49,22 @@ export const AnalyticsView: React.FC = () => {
         <div className="flex items-center gap-1 bg-[#F2F4F7] p-1 rounded">
           <button
             onClick={() => setTimeframe('7d')}
-            className={`px-3 py-1 text-xs font-semibold rounded ${
-              timeframe === '7d' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
-            }`}
+            className={`px-3 py-1 text-xs font-semibold rounded ${timeframe === '7d' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
+              }`}
           >
             Last 7 Days
           </button>
           <button
             onClick={() => setTimeframe('30d')}
-            className={`px-3 py-1 text-xs font-semibold rounded ${
-              timeframe === '30d' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
-            }`}
+            className={`px-3 py-1 text-xs font-semibold rounded ${timeframe === '30d' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
+              }`}
           >
             Last 30 Days
           </button>
           <button
             onClick={() => setTimeframe('term')}
-            className={`px-3 py-1 text-xs font-semibold rounded ${
-              timeframe === 'term' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
-            }`}
+            className={`px-3 py-1 text-xs font-semibold rounded ${timeframe === 'term' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
+              }`}
           >
             Current Term
           </button>

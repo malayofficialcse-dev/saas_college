@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { MOCK_DEPARTMENTS, MOCK_TICKETS } from '@/lib/mock-data';
+import { reportsApi } from '@/lib/api';
 
 export const ReportsView: React.FC = () => {
   const [reportType, setReportType] = useState('ALL_QUERIES');
@@ -55,6 +56,14 @@ export const ReportsView: React.FC = () => {
   const handleGenerateReport = () => {
     setIsExporting(true);
     setSuccessMessage('');
+
+    reportsApi
+      .exportCsv({
+        departmentId: department !== 'ALL' ? department : undefined,
+      })
+      .catch((err) => {
+        console.warn('[ReportsView] Backend CSV notice:', err);
+      });
 
     setTimeout(() => {
       // Build realistic CSV payload

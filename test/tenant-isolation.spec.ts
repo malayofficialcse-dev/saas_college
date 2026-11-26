@@ -88,8 +88,8 @@ describe('Multi-Tenant Data Isolation Suite', () => {
       const tenantClient = createTenantPrismaClient(mockPrismaBase);
 
       await TenantContext.run({ tenantId: 'college-campus-10', tenantSlug: 'acme' }, async () => {
-        const queryArgs = { where: { status: 'OPEN' } };
-        const result = await tenantClient.query.findMany(queryArgs);
+        const queryArgs = { where: { status: 'OPEN' } } as any;
+        const result: any = await (tenantClient.query as any).findMany(queryArgs);
 
         expect(result.where).toHaveProperty('tenantId', 'college-campus-10');
         expect(result.where).toHaveProperty('status', 'OPEN');
@@ -119,8 +119,8 @@ describe('Multi-Tenant Data Isolation Suite', () => {
       const tenantClient = createTenantPrismaClient(mockPrismaBase);
 
       await TenantContext.run({ tenantId: 'college-campus-99', tenantSlug: 'stjude' }, async () => {
-        const createArgs = { data: { title: 'Fee Inquiry' } };
-        const result = await tenantClient.query.create(createArgs);
+        const createArgs = { data: { title: 'Fee Inquiry' } } as any;
+        const result: any = await (tenantClient.query as any).create(createArgs);
 
         expect(result.data).toHaveProperty('tenantId', 'college-campus-99');
         expect(result.data).toHaveProperty('title', 'Fee Inquiry');

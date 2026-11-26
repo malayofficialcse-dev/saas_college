@@ -33,6 +33,9 @@ export interface User {
   departmentCode?: string;
   enrollmentNumber?: string;
   designation?: string;
+  status?: 'ACTIVE' | 'DEACTIVATED' | 'PENDING';
+  lastLoginAt?: string;
+  isMfaEnabled?: boolean;
 }
 
 export interface Tenant {
@@ -55,6 +58,8 @@ export interface TicketMessage {
   createdAt: string;
   attachments?: { name: string; size: string; url: string }[];
 }
+
+export type ConversationMessage = TicketMessage;
 
 export interface Ticket {
   id: string;

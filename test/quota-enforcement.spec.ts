@@ -51,7 +51,8 @@ describe('Quota Enforcement across Academic and Operations Services', () => {
         departmentId: 'dept-1',
         courseId: 'course-1',
         academicSessionId: 'session-1',
-        semester: 1,
+        currentSemester: 1,
+        admissionYear: 2026,
       }),
     ).rejects.toThrow(ForbiddenException);
 
@@ -101,7 +102,7 @@ describe('Quota Enforcement across Academic and Operations Services', () => {
         password: 'Password123!',
         employeeCode: 'EMP-001',
         designation: 'Accountant',
-        category: 'ADMINISTRATIVE' as any,
+        staffCategory: 'ADMINISTRATIVE' as any,
       }),
     ).rejects.toThrow(ForbiddenException);
 
@@ -127,6 +128,7 @@ describe('Quota Enforcement across Academic and Operations Services', () => {
         title: 'Need duplicate ID card',
         description: 'Lost ID card in campus library',
         categoryId: 'cat-1',
+        departmentId: 'dept-1',
       }),
     ).rejects.toThrow(ForbiddenException);
 

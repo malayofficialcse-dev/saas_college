@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   GraduationCap,
   Search,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { StudentProfile } from '@/lib/types';
 import { MOCK_STUDENTS, MOCK_DEPARTMENTS, MOCK_COURSES } from '@/lib/mock-data';
+import { studentsApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +33,12 @@ export const StudentsView: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
 
+  useEffect(() => {
+    studentsApi.getAll().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setStudents(data);
+    });
+  }, []);
+
   const [form, setForm] = useState({
     enrollmentNumber: '',
     firstName: '',
@@ -44,7 +51,7 @@ export const StudentsView: React.FC = () => {
     admissionYear: 2025,
   });
 
-  const handleEnrollStudent = (e: React.FormEvent) => {
+  const handleEnrollStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.enrollmentNumber || !form.firstName || !form.lastName || !form.email) return;
 
@@ -64,7 +71,22 @@ export const StudentsView: React.FC = () => {
       openQueries: 0,
     };
 
-    setStudents((prev) => [newStudent, ...prev]);
+    try {
+      const created = await studentsApi.create({
+        enrollmentNumber: form.enrollmentNumber.toUpperCase(),
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        phone: form.phone,
+        departmentCode: form.departmentCode,
+        courseCode: form.courseCode,
+        semester: Number(form.currentSemester),
+        admissionYear: Number(form.admissionYear),
+      });
+      setStudents((prev) => [created || newStudent, ...prev]);
+    } catch {
+      setStudents((prev) => [newStudent, ...prev]);
+    }
     setIsEnrollModalOpen(false);
     setForm({
       enrollmentNumber: '',

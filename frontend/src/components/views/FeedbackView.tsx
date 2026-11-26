@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Star,
   MessageSquare,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { QueryFeedbackItem } from '@/lib/types';
 import { MOCK_FEEDBACK } from '@/lib/mock-data';
+import { feedbackApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -20,8 +21,14 @@ import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
 
 export const FeedbackView: React.FC = () => {
-  const [feedbackList] = useState<QueryFeedbackItem[]>(MOCK_FEEDBACK);
+  const [feedbackList, setFeedbackList] = useState<QueryFeedbackItem[]>(MOCK_FEEDBACK);
   const [ratingFilter, setRatingFilter] = useState<number | 'ALL'>('ALL');
+
+  useEffect(() => {
+    feedbackApi.getStudentHistory().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setFeedbackList(data);
+    });
+  }, []);
 
   const avgRating = (
     feedbackList.reduce((acc, curr) => acc + curr.rating, 0) / feedbackList.length
@@ -108,33 +115,29 @@ export const FeedbackView: React.FC = () => {
               <span className="text-[#667085]">Filter:</span>
               <button
                 onClick={() => setRatingFilter('ALL')}
-                className={`px-2 py-0.5 rounded text-xs ${
-                  ratingFilter === 'ALL' ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
-                }`}
+                className={`px-2 py-0.5 rounded text-xs ${ratingFilter === 'ALL' ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
+                  }`}
               >
                 All
               </button>
               <button
                 onClick={() => setRatingFilter(5)}
-                className={`px-2 py-0.5 rounded text-xs ${
-                  ratingFilter === 5 ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
-                }`}
+                className={`px-2 py-0.5 rounded text-xs ${ratingFilter === 5 ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
+                  }`}
               >
                 5★
               </button>
               <button
                 onClick={() => setRatingFilter(4)}
-                className={`px-2 py-0.5 rounded text-xs ${
-                  ratingFilter === 4 ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
-                }`}
+                className={`px-2 py-0.5 rounded text-xs ${ratingFilter === 4 ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
+                  }`}
               >
                 4★
               </button>
               <button
                 onClick={() => setRatingFilter(3)}
-                className={`px-2 py-0.5 rounded text-xs ${
-                  ratingFilter === 3 ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
-                }`}
+                className={`px-2 py-0.5 rounded text-xs ${ratingFilter === 3 ? 'bg-[#4779B8] text-white font-semibold' : 'text-[#667085]'
+                  }`}
               >
                 3★
               </button>

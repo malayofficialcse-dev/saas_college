@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   Search,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { KnowledgeArticle } from '@/lib/types';
 import { MOCK_KB_ARTICLES } from '@/lib/mock-data';
+import { kbApi } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -27,6 +28,12 @@ export const KnowledgeBaseView: React.FC = () => {
   const { role } = useAuth();
   const [articles, setArticles] = useState<KnowledgeArticle[]>(MOCK_KB_ARTICLES);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    kbApi.getArticles().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setArticles(data);
+    });
+  }, []);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [readingArticle, setReadingArticle] = useState<KnowledgeArticle | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -81,10 +88,10 @@ export const KnowledgeBaseView: React.FC = () => {
       setReadingArticle((prev) =>
         prev
           ? {
-              ...prev,
-              helpfulCount: isHelpful ? prev.helpfulCount + 1 : prev.helpfulCount,
-              notHelpfulCount: !isHelpful ? prev.notHelpfulCount + 1 : prev.notHelpfulCount,
-            }
+            ...prev,
+            helpfulCount: isHelpful ? prev.helpfulCount + 1 : prev.helpfulCount,
+            notHelpfulCount: !isHelpful ? prev.notHelpfulCount + 1 : prev.notHelpfulCount,
+          }
           : null
       );
     }
@@ -225,11 +232,10 @@ export const KnowledgeBaseView: React.FC = () => {
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 style={{ borderRadius: '4px' }}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
-                  selectedCategory === cat
+                className={`px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${selectedCategory === cat
                     ? 'bg-[#4779B8] text-white'
                     : 'bg-white border border-[#D0D5DD] text-[#344054] hover:bg-[#F9FAFB]'
-                }`}
+                  }`}
               >
                 {cat === 'ALL' ? 'All Topics' : cat}
               </button>

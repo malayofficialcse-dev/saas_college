@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   GraduationCap,
   Building,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Department, Course, AcademicSession } from '@/lib/types';
 import { MOCK_DEPARTMENTS, MOCK_COURSES, MOCK_ACADEMIC_SESSIONS } from '@/lib/mock-data';
+import { academicApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,8 +26,10 @@ import { Modal } from '@/components/ui/Modal';
 import { Tabs } from '@/components/ui/Tabs';
 import { StatCard } from '@/components/ui/StatCard';
 
-export const AcademicView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'departments' | 'courses' | 'sessions'>('departments');
+export const AcademicView: React.FC<{ initialTab?: 'departments' | 'courses' | 'sessions' }> = ({
+  initialTab = 'departments',
+}) => {
+  const [activeTab, setActiveTab] = useState<'departments' | 'courses' | 'sessions'>(initialTab);
   const [search, setSearch] = useState('');
 
   // Department State
@@ -55,7 +58,19 @@ export const AcademicView: React.FC = () => {
     endDate: '',
   });
 
-  const handleAddDepartment = (e: React.FormEvent) => {
+  useEffect(() => {
+    academicApi.getDepartments().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setDepartments(data);
+    });
+    academicApi.getCourses().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setCourses(data);
+    });
+    academicApi.getSessions().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setSessions(data);
+    });
+  }, []);
+
+  const handleAddDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deptForm.name || !deptForm.code) return;
     const newDept: Department = {
@@ -68,12 +83,21 @@ export const AcademicView: React.FC = () => {
       openQueriesCount: 0,
       slaCompliance: 100,
     };
-    setDepartments((prev) => [...prev, newDept]);
+    try {
+      const created = await academicApi.createDepartment({
+        name: deptForm.name,
+        code: deptForm.code.toUpperCase(),
+        hodName: deptForm.hodName,
+      });
+      setDepartments((prev) => [...prev, created || newDept]);
+    } catch {
+      setDepartments((prev) => [...prev, newDept]);
+    }
     setDeptForm({ name: '', code: '', hodName: '' });
     setIsDeptModalOpen(false);
   };
 
-  const handleAddCourse = (e: React.FormEvent) => {
+  const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!courseForm.name || !courseForm.code) return;
     const newCourse: Course = {
@@ -85,7 +109,18 @@ export const AcademicView: React.FC = () => {
       durationSemesters: Number(courseForm.durationSemesters),
       studentCount: 0,
     };
-    setCourses((prev) => [...prev, newCourse]);
+    try {
+      const created = await academicApi.createCourse({
+        name: courseForm.name,
+        code: courseForm.code.toUpperCase(),
+        departmentCode: courseForm.departmentCode,
+        degreeType: courseForm.degreeType,
+        durationSemesters: Number(courseForm.durationSemesters),
+      });
+      setCourses((prev) => [...prev, created || newCourse]);
+    } catch {
+      setCourses((prev) => [...prev, newCourse]);
+    }
     setCourseForm({
       name: '',
       code: '',
@@ -365,8 +400,8 @@ export const AcademicView: React.FC = () => {
                         sess.status === 'ACTIVE'
                           ? 'success'
                           : sess.status === 'UPCOMING'
-                          ? 'info'
-                          : 'neutral'
+                            ? 'info'
+                            : 'neutral'
                       }
                     >
                       {sess.status}

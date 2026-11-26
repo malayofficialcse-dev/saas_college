@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CreditCard,
   Check,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SubscriptionPlan, Invoice } from '@/lib/types';
 import { MOCK_PLANS, MOCK_INVOICES, MOCK_TENANT } from '@/lib/mock-data';
+import { subscriptionsApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -27,10 +28,16 @@ export const SubscriptionsView: React.FC = () => {
   const [invoices] = useState<Invoice[]>(MOCK_INVOICES);
   const [successNote, setSuccessNote] = useState('');
 
+  useEffect(() => {
+    subscriptionsApi.getPlans().catch(() => { });
+    subscriptionsApi.getCurrent().catch(() => { });
+  }, []);
+
   const handlePlanSelect = (planName: string) => {
     setCurrentPlan(planName.toUpperCase());
     setSuccessNote(`Successfully switched campus subscription tier to ${planName}!`);
     setTimeout(() => setSuccessNote(''), 4000);
+    subscriptionsApi.changePlan({ planTier: planName.toUpperCase(), billingCycle }).catch(() => { });
   };
 
   return (
@@ -50,17 +57,15 @@ export const SubscriptionsView: React.FC = () => {
         <div className="flex items-center gap-2 bg-[#F2F4F7] p-1 rounded">
           <button
             onClick={() => setBillingCycle('MONTHLY')}
-            className={`px-3 py-1 text-xs font-semibold rounded cursor-pointer ${
-              billingCycle === 'MONTHLY' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
-            }`}
+            className={`px-3 py-1 text-xs font-semibold rounded cursor-pointer ${billingCycle === 'MONTHLY' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
+              }`}
           >
             Monthly Billing
           </button>
           <button
             onClick={() => setBillingCycle('YEARLY')}
-            className={`px-3 py-1 text-xs font-semibold rounded cursor-pointer ${
-              billingCycle === 'YEARLY' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
-            }`}
+            className={`px-3 py-1 text-xs font-semibold rounded cursor-pointer ${billingCycle === 'YEARLY' ? 'bg-white shadow text-[#202938]' : 'text-[#667085]'
+              }`}
           >
             Annual (Save 20%)
           </button>
@@ -159,9 +164,8 @@ export const SubscriptionsView: React.FC = () => {
             return (
               <Card
                 key={plan.id}
-                className={`relative flex flex-col justify-between ${
-                  isSelected ? 'border-[#4779B8] ring-2 ring-[#4779B8]' : 'hover:border-[#D0D5DD]'
-                }`}
+                className={`relative flex flex-col justify-between ${isSelected ? 'border-[#4779B8] ring-2 ring-[#4779B8]' : 'hover:border-[#D0D5DD]'
+                  }`}
               >
                 <div>
                   <div className="flex items-center justify-between">

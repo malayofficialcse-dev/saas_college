@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   Building,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { TenantConfiguration } from '@/lib/types';
 import { MOCK_TENANT_CONFIG } from '@/lib/mock-data';
+import { tenantConfigApi } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -23,6 +24,12 @@ import { Badge } from '@/components/ui/Badge';
 export const TenantConfigView: React.FC = () => {
   const [config, setConfig] = useState<TenantConfiguration>(MOCK_TENANT_CONFIG);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    tenantConfigApi.getConfig().then((data) => {
+      if (data && data.collegeName) setConfig(data);
+    });
+  }, []);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -38,10 +45,15 @@ export const TenantConfigView: React.FC = () => {
     });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      await tenantConfigApi.updateConfig(config);
+    } catch (err) {
+      console.warn('[TenantConfigView] Remote config sync error:', err);
+    }
   };
 
   return (
@@ -179,11 +191,10 @@ export const TenantConfigView: React.FC = () => {
                       type="button"
                       onClick={() => toggleDay(day)}
                       style={{ borderRadius: '4px' }}
-                      className={`px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                        isChecked
-                          ? 'bg-[#4779B8] text-white'
-                          : 'bg-[#F2F4F7] text-[#667085] hover:bg-[#E5E7EB]'
-                      }`}
+                      className={`px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${isChecked
+                        ? 'bg-[#4779B8] text-white'
+                        : 'bg-[#F2F4F7] text-[#667085] hover:bg-[#E5E7EB]'
+                        }`}
                     >
                       {day.slice(0, 3)}
                     </button>

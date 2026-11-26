@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Clock,
   Layers,
@@ -18,6 +18,7 @@ import {
   MOCK_ESCALATION_RULES,
   MOCK_DEPARTMENTS,
 } from '@/lib/mock-data';
+import { slaApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -28,13 +29,25 @@ import { Modal } from '@/components/ui/Modal';
 import { Tabs } from '@/components/ui/Tabs';
 import { StatCard } from '@/components/ui/StatCard';
 
-export const SlaCategoriesView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'categories' | 'policies' | 'escalations'>('categories');
+export const SlaCategoriesView: React.FC<{ initialTab?: 'categories' | 'policies' | 'escalations' }> = ({
+  initialTab = 'categories',
+}) => {
+  const [activeTab, setActiveTab] = useState<'categories' | 'policies' | 'escalations'>(initialTab);
   const [categories, setCategories] = useState<QueryCategoryItem[]>(MOCK_QUERY_CATEGORIES);
   const [policies, setPolicies] = useState<SlaPolicyItem[]>(MOCK_SLA_POLICIES);
   const [escalations] = useState<EscalationRule[]>(MOCK_ESCALATION_RULES);
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+  useEffect(() => {
+    slaApi.getCategories().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setCategories(data);
+    });
+    slaApi.getPolicies().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setPolicies(data);
+    });
+  }, []);
+
   const [catForm, setCatForm] = useState({
     name: '',
     code: '',
@@ -45,7 +58,7 @@ export const SlaCategoriesView: React.FC = () => {
     resolutionTimeHours: 24,
   });
 
-  const handleAddCategory = (e: React.FormEvent) => {
+  const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catForm.name || !catForm.code) return;
 
@@ -61,7 +74,20 @@ export const SlaCategoriesView: React.FC = () => {
       isActive: true,
     };
 
-    setCategories((prev) => [...prev, newCat]);
+    try {
+      const created = await slaApi.createCategory({
+        name: catForm.name,
+        code: catForm.code.toUpperCase().replace(/\s+/g, '_'),
+        description: catForm.description,
+        departmentCode: catForm.departmentCode,
+        defaultPriority: catForm.defaultPriority,
+        responseTimeHours: Number(catForm.responseTimeHours),
+        resolutionTimeHours: Number(catForm.resolutionTimeHours),
+      });
+      setCategories((prev) => [...prev, created || newCat]);
+    } catch {
+      setCategories((prev) => [...prev, newCat]);
+    }
     setIsCategoryModalOpen(false);
     setCatForm({
       name: '',
@@ -170,10 +196,10 @@ export const SlaCategoriesView: React.FC = () => {
                         cat.defaultPriority === 'URGENT'
                           ? 'danger'
                           : cat.defaultPriority === 'HIGH'
-                          ? 'warning'
-                          : cat.defaultPriority === 'MEDIUM'
-                          ? 'primary'
-                          : 'neutral'
+                            ? 'warning'
+                            : cat.defaultPriority === 'MEDIUM'
+                              ? 'primary'
+                              : 'neutral'
                       }
                     >
                       {cat.defaultPriority}
@@ -211,10 +237,10 @@ export const SlaCategoriesView: React.FC = () => {
                         p.priority === 'URGENT'
                           ? 'danger'
                           : p.priority === 'HIGH'
-                          ? 'warning'
-                          : p.priority === 'MEDIUM'
-                          ? 'primary'
-                          : 'neutral'
+                            ? 'warning'
+                            : p.priority === 'MEDIUM'
+                              ? 'primary'
+                              : 'neutral'
                       }
                     >
                       {p.priority}

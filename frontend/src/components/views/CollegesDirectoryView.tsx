@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Plus,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { CollegeItem } from '@/lib/types';
 import { MOCK_COLLEGES } from '@/lib/mock-data';
+import { collegesApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +32,12 @@ export const CollegesDirectoryView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
 
+  useEffect(() => {
+    collegesApi.getAll().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setColleges(data);
+    });
+  }, []);
+
   const [form, setForm] = useState({
     name: '',
     code: '',
@@ -40,7 +47,7 @@ export const CollegesDirectoryView: React.FC = () => {
     plan: 'PROFESSIONAL' as const,
   });
 
-  const handleOnboard = (e: React.FormEvent) => {
+  const handleOnboard = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.code || !form.adminEmail) return;
 
@@ -59,7 +66,19 @@ export const CollegesDirectoryView: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
 
-    setColleges((prev) => [newCol, ...prev]);
+    try {
+      const created = await collegesApi.create({
+        name: form.name,
+        code: form.code.toUpperCase(),
+        domain: form.domain || `${form.code.toLowerCase()}.edu`,
+        location: form.location || 'India',
+        adminEmail: form.adminEmail,
+        plan: form.plan,
+      });
+      setColleges((prev) => [created || newCol, ...prev]);
+    } catch {
+      setColleges((prev) => [newCol, ...prev]);
+    }
     setIsOnboardModalOpen(false);
     setForm({
       name: '',

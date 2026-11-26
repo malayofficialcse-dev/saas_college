@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Shield,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { StaffMember, UserRole } from '@/lib/types';
 import { MOCK_STAFF, MOCK_DEPARTMENTS } from '@/lib/mock-data';
+import { staffApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,12 +26,20 @@ import { Modal } from '@/components/ui/Modal';
 import { Tabs } from '@/components/ui/Tabs';
 import { StatCard } from '@/components/ui/StatCard';
 
-export const FacultyStaffView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'directory' | 'permissions'>('directory');
+export const FacultyStaffView: React.FC<{ initialTab?: 'directory' | 'permissions' }> = ({
+  initialTab = 'directory',
+}) => {
+  const [activeTab, setActiveTab] = useState<'directory' | 'permissions'>(initialTab);
   const [staff, setStaff] = useState<StaffMember[]>(MOCK_STAFF);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    staffApi.getFaculty().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setStaff(data);
+    });
+  }, []);
 
   const [form, setForm] = useState({
     employeeCode: '',
@@ -44,7 +53,7 @@ export const FacultyStaffView: React.FC = () => {
     designation: '',
   });
 
-  const handleAddStaff = (e: React.FormEvent) => {
+  const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.employeeCode || !form.firstName || !form.lastName || !form.email) return;
 
@@ -64,7 +73,22 @@ export const FacultyStaffView: React.FC = () => {
       resolvedQueriesCount: 0,
     };
 
-    setStaff((prev) => [...prev, newStaff]);
+    try {
+      const created = await staffApi.createStaff({
+        employeeCode: form.employeeCode.toUpperCase(),
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        phone: form.phone,
+        role: form.role,
+        category: form.staffCategory,
+        departmentCode: form.departmentCode,
+        designation: form.designation,
+      });
+      setStaff((prev) => [...prev, created || newStaff]);
+    } catch {
+      setStaff((prev) => [...prev, newStaff]);
+    }
     setIsAddModalOpen(false);
     setForm({
       employeeCode: '',

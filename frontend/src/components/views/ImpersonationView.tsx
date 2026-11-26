@@ -18,6 +18,8 @@ import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { MOCK_COLLEGES } from '@/lib/mock-data';
+import { systemAdminApi } from '@/lib/api';
+import { apiClient } from '@/lib/api-client';
 
 export const ImpersonationView: React.FC = () => {
   const [selectedTenant, setSelectedTenant] = useState(MOCK_COLLEGES[0]?.id || '');
@@ -60,12 +62,16 @@ export const ImpersonationView: React.FC = () => {
     setSessionList((prev) => [newSess, ...prev]);
     setActiveSession({ id: newSess.id, collegeName: college.name, expiresIn: duration });
     setReason('');
+
+    apiClient.setActAsTenantId(selectedTenant);
+    systemAdminApi.impersonate({ tenantId: selectedTenant, reason }).catch(() => {});
   };
 
   const handleTerminateSession = (sessionId: string) => {
     setSessionList((prev) => prev.filter((s) => s.id !== sessionId));
     if (activeSession?.id === sessionId) {
       setActiveSession(null);
+      apiClient.setActAsTenantId(null);
     }
   };
 

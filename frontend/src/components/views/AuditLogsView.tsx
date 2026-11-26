@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Search,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AuditLog } from '@/lib/types';
 import { MOCK_AUDIT_LOGS } from '@/lib/mock-data';
+import { auditLogsApi } from '@/lib/api';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -21,10 +22,16 @@ import { Modal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/ui/StatCard';
 
 export const AuditLogsView: React.FC = () => {
-  const [logs] = useState<AuditLog[]>(MOCK_AUDIT_LOGS);
+  const [logs, setLogs] = useState<AuditLog[]>(MOCK_AUDIT_LOGS);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('ALL');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  useEffect(() => {
+    auditLogsApi.getAll().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setLogs(data);
+    }).catch(() => { });
+  }, []);
 
   const filteredLogs = logs.filter((log) => {
     if (actionFilter !== 'ALL' && log.action !== actionFilter) return false;

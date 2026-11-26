@@ -9,7 +9,7 @@ import {
   HealthCheckError,
 } from '@nestjs/terminus';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+import type { Connection } from 'mongoose';
 
 @Injectable()
 export class MongoHealthIndicator extends HealthIndicator {

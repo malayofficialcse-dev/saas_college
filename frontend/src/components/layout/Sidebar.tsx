@@ -20,6 +20,10 @@ import {
   Layers,
   Star,
   Settings,
+  MessageSquare,
+  Bell,
+  Paperclip,
+  DollarSign,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/types';
@@ -62,6 +66,16 @@ export const Sidebar: React.FC<{ isCollapsed: boolean; onToggle: () => void }> =
       label: role === 'STUDENT' ? 'My Queries' : 'Tickets & Queries',
       icon: <TicketIcon size={17} />,
       badge: role === 'STUDENT' ? myTicketsCount : openTicketsCount,
+    },
+    {
+      id: 'conversations',
+      label: 'Live Messaging',
+      icon: <MessageSquare size={17} />,
+    },
+    {
+      id: 'notifications',
+      label: 'Alerts & Notices',
+      icon: <Bell size={17} />,
     },
     {
       id: 'knowledge-base',
@@ -123,14 +137,32 @@ export const Sidebar: React.FC<{ isCollapsed: boolean; onToggle: () => void }> =
       icon: <FileSpreadsheet size={17} />,
       roles: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'PRINCIPAL', 'STAFF_ACCOUNTS', 'STAFF_EXAMINATION'],
     },
+    {
+      id: 'attachments',
+      label: 'File Attachments',
+      icon: <Paperclip size={17} />,
+      roles: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'PRINCIPAL', 'HOD', 'STAFF_SUPPORT', 'STAFF_ACCOUNTS'],
+    },
   ];
 
   // Administration & Finance
   const adminNavItems: NavItem[] = [
     {
+      id: 'users',
+      label: 'User Accounts',
+      icon: <UserCheck size={17} />,
+      roles: ['SUPER_ADMIN', 'COLLEGE_ADMIN'],
+    },
+    {
       id: 'subscriptions',
       label: 'Billing & Quotas',
       icon: <CreditCard size={17} />,
+      roles: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'STAFF_ACCOUNTS'],
+    },
+    {
+      id: 'payments',
+      label: 'Payments & Gateway',
+      icon: <DollarSign size={17} />,
       roles: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'STAFF_ACCOUNTS'],
     },
     {

@@ -20,6 +20,18 @@
     "noFallthroughCasesInSwitch": true,
     "strictPropertyInitialization": false,
     "ignoreDeprecations": "6.0",
-    "types": ["node"]
-  }
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "prisma/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "frontend"
+  ]
 }
