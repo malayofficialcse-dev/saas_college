@@ -5,10 +5,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
+  icon?: React.ReactNode;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', isLoading = false, disabled, children, ...props }, ref) => {
+  ({ className, variant = 'primary', size = 'md', isLoading = false, icon, disabled, children, ...props }, ref) => {
     const baseStyles =
       'inline-flex items-center justify-center font-medium transition-colors select-none focus:outline-none focus:ring-1 focus:ring-[#4779B8] disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-[13px]';
 
@@ -44,6 +45,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </svg>
         )}
+        {icon && !isLoading && <span className="mr-1.5 shrink-0 inline-flex items-center">{icon}</span>}
         {children}
       </button>
     );

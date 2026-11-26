@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { QueryPriority, QueryStatus } from '@/lib/types';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline' | 'primary' | 'neutral';
   status?: QueryStatus;
   priority?: QueryPriority;
 }
@@ -66,6 +66,8 @@ export const Badge: React.FC<BadgeProps> = ({
     danger: 'bg-[#FCEEEE] text-[#D9534F] border border-[#F3B7B5]',
     info: 'bg-[#EDF3FA] text-[#4779B8] border border-[#C5DAF0]',
     outline: 'bg-white text-[#667085] border border-[#E5E7EB]',
+    primary: 'bg-[#EDF3FA] text-[#4779B8] border border-[#C5DAF0]',
+    neutral: 'bg-[#F2F4F7] text-[#344054] border border-[#E5E7EB]',
   };
 
   return (

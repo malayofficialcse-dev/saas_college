@@ -157,3 +157,130 @@ export interface AuditLog {
   createdAt: string;
   details?: Record<string, any>;
 }
+
+export interface AcademicSession {
+  id: string;
+  name: string;
+  code: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  status: 'ACTIVE' | 'UPCOMING' | 'ARCHIVED';
+}
+
+export interface StudentProfile {
+  id: string;
+  enrollmentNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  departmentCode: string;
+  courseCode: string;
+  currentSemester: number;
+  admissionYear: number;
+  status: 'ACTIVE' | 'GRADUATED' | 'SUSPENDED';
+  totalQueries: number;
+  openQueries: number;
+}
+
+export interface StaffMember {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  staffCategory: string;
+  departmentCode: string;
+  designation: string;
+  status: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE';
+  assignedQueriesCount: number;
+  resolvedQueriesCount: number;
+}
+
+export interface QueryCategoryItem {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  departmentCode: string;
+  defaultPriority: QueryPriority;
+  responseTimeHours: number;
+  resolutionTimeHours: number;
+  isActive: boolean;
+}
+
+export interface SlaPolicyItem {
+  id: string;
+  name: string;
+  priority: QueryPriority;
+  responseTimeHours: number;
+  resolutionTimeHours: number;
+  escalationHours: number;
+  isEnabled: boolean;
+}
+
+export interface EscalationRule {
+  id: string;
+  level: number;
+  name: string;
+  triggerCondition: string;
+  escalateToRole: string;
+  notifyEmail: boolean;
+}
+
+export interface QueryFeedbackItem {
+  id: string;
+  queryId: string;
+  queryTicketNumber: string;
+  studentName: string;
+  studentEmail: string;
+  rating: number; // 1 to 5
+  comment: string;
+  tags: string[];
+  createdAt: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: 'QUERY_CREATED' | 'QUERY_ASSIGNED' | 'QUERY_REPLIED' | 'SLA_WARNING' | 'SYSTEM';
+  isRead: boolean;
+  createdAt: string;
+  linkId?: string;
+}
+
+export interface CollegeItem {
+  id: string;
+  tenantId: string;
+  name: string;
+  code: string;
+  domain: string;
+  location: string;
+  adminEmail: string;
+  studentCount: number;
+  staffCount: number;
+  plan: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+  status: 'ACTIVE' | 'SUSPENDED' | 'PROVISIONING';
+  createdAt: string;
+}
+
+export interface TenantConfiguration {
+  collegeName: string;
+  collegeCode: string;
+  domain: string;
+  primaryColor: string;
+  logoUrl: string;
+  contactEmail: string;
+  contactPhone: string;
+  workingHoursStart: string;
+  workingHoursEnd: string;
+  workingDays: string[];
+  autoAssignmentStrategy: 'ROUND_ROBIN' | 'WORKLOAD_BALANCED' | 'MANUAL';
+  emailNotifications: boolean;
+  slaAlerts: boolean;
+  maintenanceMode: boolean;
+}

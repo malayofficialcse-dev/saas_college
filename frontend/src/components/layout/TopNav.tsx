@@ -38,10 +38,15 @@ export const TopNav: React.FC<{ onNewTicket: () => void }> = ({ onNewTicket }) =
     'knowledge-base': 'Knowledge Base',
     faqs: 'Frequently Asked Questions',
     academic: 'Academic Setup',
-    subscriptions: 'Subscriptions & Billing',
-    analytics: 'Analytics & CSAT',
+    students: 'Students Directory',
+    'faculty-staff': 'Faculty & Staff Governance',
+    'sla-categories': 'Categories & SLA Policies',
+    feedback: 'Student Feedback & CSAT',
+    analytics: 'Analytics & SLA Compliance',
     reports: 'Export Reports',
+    subscriptions: 'Subscriptions & Billing',
     'audit-logs': 'Security Audit Trail',
+    'tenant-config': 'Tenant Configuration & Branding',
     'colleges-directory': 'Colleges Directory',
     impersonation: 'Tenant Impersonation',
   };
@@ -123,9 +128,8 @@ export const TopNav: React.FC<{ onNewTicket: () => void }> = ({ onNewTicket }) =
                     switchRole(r.role);
                     setShowRoleMenu(false);
                   }}
-                  className={`w-full text-left px-3 py-1.5 hover:bg-[#F5F6F8] flex items-center justify-between cursor-pointer ${
-                    role === r.role ? 'text-[#4779B8] font-semibold bg-[#EDF3FA]' : 'text-[#202938]'
-                  }`}
+                  className={`w-full text-left px-3 py-1.5 hover:bg-[#F5F6F8] flex items-center justify-between cursor-pointer ${role === r.role ? 'text-[#4779B8] font-semibold bg-[#EDF3FA]' : 'text-[#202938]'
+                    }`}
                 >
                   <span>{r.label}</span>
                   {role === r.role && <span className="text-xs">✓</span>}

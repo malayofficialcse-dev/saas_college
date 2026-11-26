@@ -11,9 +11,22 @@ import { StudentDashboard } from '@/components/dashboards/StudentDashboard';
 import { SuperAdminDashboard } from '@/components/dashboards/SuperAdminDashboard';
 import { CreateTicketModal } from '@/components/views/CreateTicketModal';
 import { TicketsView } from '@/components/views/TicketsView';
+import { AcademicView } from '@/components/views/AcademicView';
+import { StudentsView } from '@/components/views/StudentsView';
+import { FacultyStaffView } from '@/components/views/FacultyStaffView';
+import { SlaCategoriesView } from '@/components/views/SlaCategoriesView';
+import { KnowledgeBaseView } from '@/components/views/KnowledgeBaseView';
+import { FaqsView } from '@/components/views/FaqsView';
+import { FeedbackView } from '@/components/views/FeedbackView';
+import { AnalyticsView } from '@/components/views/AnalyticsView';
+import { ReportsView } from '@/components/views/ReportsView';
+import { SubscriptionsView } from '@/components/views/SubscriptionsView';
+import { AuditLogsView } from '@/components/views/AuditLogsView';
+import { CollegesDirectoryView } from '@/components/views/CollegesDirectoryView';
+import { TenantConfigView } from '@/components/views/TenantConfigView';
+import { ImpersonationView } from '@/components/views/ImpersonationView';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { MOCK_FAQS, MOCK_KB_ARTICLES } from '@/lib/mock-data';
 
 function Portal() {
   const { role, activeView } = useAuth();
@@ -24,60 +37,83 @@ function Portal() {
 
   if (activeView === 'dashboard') {
     switch (role) {
-      case 'SUPER_ADMIN': content = <SuperAdminDashboard />; break;
-      case 'PRINCIPAL': content = <PrincipalDashboard />; break;
-      case 'HOD': content = <HodDashboard />; break;
-      case 'FACULTY': content = <FacultyDashboard />; break;
-      case 'STUDENT': content = <StudentDashboard onNewTicket={openCreateTicket} />; break;
+      case 'SUPER_ADMIN':
+        content = <SuperAdminDashboard />;
+        break;
+      case 'PRINCIPAL':
+        content = <PrincipalDashboard />;
+        break;
+      case 'HOD':
+        content = <HodDashboard />;
+        break;
+      case 'FACULTY':
+        content = <FacultyDashboard />;
+        break;
+      case 'STUDENT':
+        content = <StudentDashboard onNewTicket={openCreateTicket} />;
+        break;
       case 'STAFF_ACCOUNTS':
       case 'STAFF_EXAMINATION':
-      case 'STAFF_SUPPORT': content = <StaffDashboard />; break;
-      default: content = <CollegeAdminDashboard />;
+      case 'STAFF_SUPPORT':
+        content = <StaffDashboard />;
+        break;
+      default:
+        content = <CollegeAdminDashboard />;
     }
   } else if (activeView === 'tickets') {
     content = <TicketsView />;
   } else if (activeView === 'knowledge-base') {
-    content = (
-      <section className="space-y-4">
-        <div><h1 className="text-2xl font-semibold">Knowledge Base</h1><p className="mt-1 text-sm text-[#667085]">Guides and answers to common college support questions.</p></div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {MOCK_KB_ARTICLES.map((article) => (
-            <article key={article.id} className="border border-[#E5E7EB] bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#4779B8]">{article.category}</p>
-              <h2 className="mt-2 font-semibold">{article.title}</h2>
-              <p className="mt-2 text-sm text-[#667085]">{article.excerpt}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    );
+    content = <KnowledgeBaseView />;
   } else if (activeView === 'faqs') {
-    content = (
-      <section className="space-y-4">
-        <div><h1 className="text-2xl font-semibold">Frequently Asked Questions</h1><p className="mt-1 text-sm text-[#667085]">Quick answers from the CollegeQuery support team.</p></div>
-        <div className="space-y-3">
-          {MOCK_FAQS.map((faq) => (
-            <article key={faq.id} className="border border-[#E5E7EB] bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#4779B8]">{faq.category}</p>
-              <h2 className="mt-2 font-semibold">{faq.question}</h2>
-              <p className="mt-2 text-sm text-[#667085]">{faq.answer}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    );
+    content = <FaqsView />;
+  } else if (activeView === 'academic') {
+    content = <AcademicView />;
+  } else if (activeView === 'students') {
+    content = <StudentsView />;
+  } else if (activeView === 'faculty-staff') {
+    content = <FacultyStaffView />;
+  } else if (activeView === 'sla-categories') {
+    content = <SlaCategoriesView />;
+  } else if (activeView === 'feedback') {
+    content = <FeedbackView />;
+  } else if (activeView === 'analytics') {
+    content = <AnalyticsView />;
+  } else if (activeView === 'reports') {
+    content = <ReportsView />;
+  } else if (activeView === 'subscriptions') {
+    content = <SubscriptionsView />;
+  } else if (activeView === 'audit-logs') {
+    content = <AuditLogsView />;
+  } else if (activeView === 'colleges-directory') {
+    content = <CollegesDirectoryView />;
+  } else if (activeView === 'tenant-config') {
+    content = <TenantConfigView />;
+  } else if (activeView === 'impersonation') {
+    content = <ImpersonationView />;
   } else {
-    content = <EmptyState title="This section is coming soon" description="Choose Dashboard, Tickets, Knowledge Base, or FAQs to continue." />;
+    content = (
+      <EmptyState
+        title="Page not found"
+        description="Select a section from the navigation sidebar."
+      />
+    );
   }
 
   return (
     <>
       <AppLayout onNewTicket={openCreateTicket}>{content}</AppLayout>
-      <CreateTicketModal isOpen={isCreateTicketOpen} onClose={() => setIsCreateTicketOpen(false)} />
+      <CreateTicketModal
+        isOpen={isCreateTicketOpen}
+        onClose={() => setIsCreateTicketOpen(false)}
+      />
     </>
   );
 }
 
 export default function HomePage() {
-  return <AuthProvider><Portal /></AuthProvider>;
+  return (
+    <AuthProvider>
+      <Portal />
+    </AuthProvider>
+  );
 }
